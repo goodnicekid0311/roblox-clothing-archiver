@@ -32,7 +32,10 @@ Saved 4972758662
 ```
 
 ```yaml
-usage: roarchive.py [-h] [-s] [-a FILE] [-p FOLDER] [-dp FOLDER] [-m {0,1}] [-nm {1,2}] [-pd PAGEDELAY] [-d DELAY] [--norun] id
+usage: roarchive.py [-h] [-s] [-a FILE] [-p FOLDER] [-dp FOLDER] [-m {0,1}]
+                    [-nm {1,2}] [-pd PAGEDELAY] [-d DELAY] [--norun]
+                    [--nodownload] [--verbose]
+                    id
 
 Roblox Clothing Archiver
 
@@ -55,6 +58,8 @@ options:
                         delay in seconds between group clothing page queries
   -d, --delay DELAY     delay in seconds between clothing texture downloads
   --norun               (debug) dont make any network requests
+  --nodownload          (debug) dont download any clothes
+  --verbose             (debug) print more
 ```
 # Why
 Made in response to several decisions by roblox attempting to phase out 2D clothing, #SaveRoblox
