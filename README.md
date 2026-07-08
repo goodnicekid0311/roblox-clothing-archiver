@@ -53,6 +53,6 @@ options:
   --norun               (debug) dont make any network requests
 ```
 # Why
-Made in response to several decisions by roblox to try to phase out 2D clothing, #SaveRoblox
+Made in response to several decisions by roblox attempting to phase out 2D clothing, #SaveRoblox
 
 ![](https://files.catbox.moe/i9qolv.png)
