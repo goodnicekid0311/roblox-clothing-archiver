@@ -7,9 +7,16 @@ import argparse
 import os
 import sys
 
-GET_CATALOG_URL = "https://catalog.roblox.com/v1/search/items/details?Category=3&CreatorType={}&IncludeNotForSale=true&Limit=30&CreatorTargetId="
+GET_CATALOG_URL = "https://catalog.roblox.com/v1/search/items/details?Category=3&CreatorType={}&Subcategory={}&IncludeNotForSale=true&Limit=30&SortType=3&CreatorTargetId="
 GROUP_CREATOR_TYPE = 2
 USER_CREATOR_TYPE = 1
+SHIRT_SUBCATEGORY = 56
+PANTS_SUBCATEGORY = 57
+SUBCATEGORY_ENUM = {
+    SHIRT_SUBCATEGORY: "shirts",
+    PANTS_SUBCATEGORY: "pants"
+}
+
 GROUP_INFO_URL = "https://groups.roblox.com/v1/groups/"
 USER_INFO_URL = "https://users.roblox.com/v1/users/"
 URL_CURSOR = "&cursor="
@@ -22,6 +29,8 @@ ROBLOSECURITY_PREFIX = ".ROBLOSECURITY="
 ROBLOSECURITY_VALID_PREFIX = "_|WARNING:-DO-NOT-SHARE-THIS"
 windows_names = {'CON', 'PRN', 'AUX', 'NUL'} | {f'COM{i}' for i in range(1, 10)} | {f'LPT{i}' for i in range(1, 10)}
 
+verbose = False
+
 def safename(name):
     safe_name = re.sub(r'[^\w\s.-]', '_', name)
     safe_name = safe_name.strip(' ')
@@ -30,32 +39,42 @@ def safename(name):
         safe_name = f"_{safe_name}"
     return safe_name[:255]
 
-def validate_request(req, callback, errorMsg):
-    match req.status_code:
-        case 200 | 201:
-            if callback:
-                callback()
-            return True
-        case _:
-            print(errorMsg)
-    return False
+def fastreq(url, callback, errorMsg, delay=None):
+    if delay:
+        if delay > 64:
+            print("request timed out waiting for rate limit")
+            return False
+        time.sleep(delay)
 
-def fastreq(url, suffix):
-    return requests.get(
-        url+str(suffix),
+    req = requests.get(
+        url,
         headers={
             "Cookie": auth
         }
     )
 
-def get_shirt_xml(shirt_id):
-    xml_get = fastreq(ROPROXY_URL, shirt_id)
+    match req.status_code:
+        case 200 | 201:
+            if callback:
+                callback(req)
+            return req
+        case 429:
+            s = delay * 2 if delay else 1
+            print("getting rate limited, waiting {}s".format(s))
+            return fastreq(url, callback, errorMsg, s)
+        case _:
+            print(errorMsg)
+            if verbose:
+                print(req.status_code)
+                print(req.text)
+            return False
 
-    def callback():
+def get_shirt_xml(shirt_id):
+    def callback(req):
         print("got xml for "+str(shirt_id))
 
-    valid = validate_request(
-        xml_get,
+    xml_get = fastreq(
+        ROPROXY_URL+str(shirt_id),
         callback,
         "error getting xml for "+str(shirt_id))
     
@@ -73,39 +92,44 @@ def save_shirt(shirt_id, filepath):
             text = url.text
             # strip it for numbers
             tex_id = "".join([char for char in text if char.isdigit()])
-            res = fastreq(PNG_URL, tex_id)
 
-            def callback():
+            def callback(req):
                 with open(filepath+".png", "wb") as file:
-                    file.write(res.content)
+                    file.write(req.content)
                     print("Saved "+str(shirt_id))
 
-            return validate_request(res, callback, "error saving shirt")
+            return fastreq(PNG_URL+str(tex_id), callback, "error saving shirt")
     else:
         return False
 
-def group_query(id, delay, creator_type, pages=None, cursor=None):
+def group_query(id, delay, creator_type, pages=None, cursor=None, subcategory=None):
     if not pages:
         pages = []
 
-    if cursor:
-        res = fastreq(GET_CATALOG_URL.format(creator_type)+id+URL_CURSOR, cursor)
-    else:
-        res = fastreq(GET_CATALOG_URL.format(creator_type), id)
+    if not subcategory:
+        subcategory = SHIRT_SUBCATEGORY
 
-    def callback():
-        print("got group page "+str(len(pages)+1)+" for "+id)
-        group_data = json.loads(res.text)
+    if cursor:
+        url = GET_CATALOG_URL.format(creator_type, subcategory)+id+URL_CURSOR+cursor
+    else:
+        url = GET_CATALOG_URL.format(creator_type, subcategory)+id
+
+    def callback(req):
+        print("got group page "+str(len(pages)+1)+" for "+id+" for "+SUBCATEGORY_ENUM[subcategory])
+        group_data = json.loads(req.text)
 
         if "data" in group_data:
             pages.append(group_data["data"])
 
         if JSON_CURSOR in group_data:
+            time.sleep(delay)
             if group_data[JSON_CURSOR] is not None:
-                time.sleep(delay)
-                group_query(id, delay, creator_type, pages, group_data[JSON_CURSOR])
+                group_query(id, delay, creator_type, pages, group_data[JSON_CURSOR], subcategory)
+            elif subcategory == SHIRT_SUBCATEGORY:
+                # switch to checking pants
+                group_query(id, delay, creator_type, pages, subcategory=PANTS_SUBCATEGORY)
 
-    validate_request(res, callback, "error getting group page "+str(id))
+    fastreq(url, callback, "error getting group page "+str(id))
 
     return pages
 
@@ -128,6 +152,7 @@ if __name__ == "__main__":
         formatter_class=argparse.RawTextHelpFormatter)
     
     # TODO: add error csv as input
+    # TODO: detect if group thing exists and then add option to skip already downloaded
     parser.add_argument("id", type=str, help="ID of the group/user to download from (or asset if using -s)")
     parser.add_argument("-s", "--single", action="store_true",
                         help="download a single asset with 'id' instead of a group/user")
@@ -141,13 +166,19 @@ if __name__ == "__main__":
                         help="enable/disable saving metadata")
     parser.add_argument("-nm", "--namemethod", type=int, choices=[1, 2], default=1,
                         help="method used for naming group folder\n  1: only name\n 2: use name and id")
-    parser.add_argument("-pd", "--pagedelay", type=float, default=0.55,
+    parser.add_argument("-pd", "--pagedelay", type=float, default=0.75,
                         help="delay in seconds between group clothing page queries")
     parser.add_argument("-d", "--delay", type=float, default=0.55,
                     help="delay in seconds between clothing texture downloads")
     parser.add_argument("--norun", action="store_true",
                 help="(debug) dont make any network requests")
+    parser.add_argument("--nodownload", action="store_true",
+                help="(debug) dont download any clothes")
+    parser.add_argument("--verbose", action="store_true",
+                help="(debug) print more")
     args = parser.parse_args()
+
+    verbose = args.verbose
 
     # Validate and create file paths before making requests
 
@@ -178,13 +209,12 @@ if __name__ == "__main__":
 
     if not args.single:
         print("getting group info for "+args.id)
-        group_info_req = fastreq(GROUP_INFO_URL, args.id)
 
         json_data = None
 
-        def json_callback(text):
+        def callback(req):
             global json_data, output_folder
-            json_data = json.loads(text)
+            json_data = json.loads(req.text)
             
             if not args.path:
                 group_name = safename(json_data["name"])
@@ -204,21 +234,14 @@ if __name__ == "__main__":
                     os.rmdir(output_folder)
                 output_folder = new_dest
 
-        def callback():
-            json_callback(group_info_req.text)
-
-        valid = validate_request(group_info_req, callback, "couldnt get group info for "+args.id)
+        valid = fastreq(GROUP_INFO_URL+args.id, callback, "couldnt get group info for "+args.id)
 
         is_user = False
 
         if not valid:
             print("trying to get user info for "+args.id)
-            user_info_req = fastreq(USER_INFO_URL, args.id)
 
-            def callback():
-                json_callback(user_info_req.text)
-
-            valid = validate_request(user_info_req, callback, "couldnt get user info for "+args.id)
+            valid = fastreq(USER_INFO_URL+args.id, callback, "couldnt get user info for "+args.id)
             if valid:
                 is_user = True
 
@@ -227,12 +250,19 @@ if __name__ == "__main__":
             sys.exit(0)
 
         pages = group_query(args.id, args.pagedelay, USER_CREATOR_TYPE if is_user else GROUP_CREATOR_TYPE)
-        
+        ct = 0
+        for page in pages:
+            ct += len(page)
+        print("got "+str(ct)+" clothes")
+
         if args.metadata == 1:
             with open(os.path.join(output_folder, "info.json"), "w") as file:
                 json.dump(json_data, file, indent=2)
             with open(os.path.join(output_folder, "info_clothing.json"), "w") as file:
                 json.dump(pages, file, indent=2)
+
+        if args.nodownload:
+            sys.exit(0)
 
         errors = []
         for page in pages:
@@ -258,12 +288,11 @@ if __name__ == "__main__":
 
             print("there were {} errors saving assets. failed IDs saved to {}".format(num_errors, error_file))
     else:
-        req = fastreq(ASSET_GET_URL.format(args.id), "")
-        valid = validate_request(req, None, "couldnt get asset details for "+args.id)
+        req = fastreq(ASSET_GET_URL.format(args.id), None, "couldnt get asset details for "+args.id)
 
         itemname = args.id
 
-        if valid:
+        if req:
             json_data = json.loads(req.text)
             itemname = json_data["Name"]+"_"+args.id
 
