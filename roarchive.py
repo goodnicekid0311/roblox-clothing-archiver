@@ -18,6 +18,7 @@ ASSET_GET_URL = "https://economy.roblox.com/v2/assets/{}/details"
 ROPROXY_URL = "https://assetdelivery.roproxy.com/v1/asset?id=" # gets texture id
 PNG_URL = "https://assetdelivery.roblox.com/v1/asset/?id=" # returns png
 XML_ELEMENT_PATH = "./Item/Properties/Content/url"
+ROBLOSECURITY_PREFIX = ".ROBLOSECURITY="
 
 windows_names = {'CON', 'PRN', 'AUX', 'NUL'} | {f'COM{i}' for i in range(1, 10)} | {f'LPT{i}' for i in range(1, 10)}
 
@@ -155,6 +156,8 @@ if __name__ == "__main__":
     with open(args.auth, "r") as file:
         global auth
         auth = file.read()
+        if not auth.startswith(ROBLOSECURITY_PREFIX):
+            auth = ROBLOSECURITY_PREFIX+auth
 
     if args.path:
         output_folder = validate_path(args.path)
