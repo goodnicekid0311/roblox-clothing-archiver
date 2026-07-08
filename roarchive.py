@@ -19,7 +19,7 @@ ROPROXY_URL = "https://assetdelivery.roproxy.com/v1/asset?id=" # gets texture id
 PNG_URL = "https://assetdelivery.roblox.com/v1/asset/?id=" # returns png
 XML_ELEMENT_PATH = "./Item/Properties/Content/url"
 ROBLOSECURITY_PREFIX = ".ROBLOSECURITY="
-
+ROBLOSECURITY_VALID_PREFIX = "_|WARNING:-DO-NOT-SHARE-THIS"
 windows_names = {'CON', 'PRN', 'AUX', 'NUL'} | {f'COM{i}' for i in range(1, 10)} | {f'LPT{i}' for i in range(1, 10)}
 
 def safename(name):
@@ -157,6 +157,8 @@ if __name__ == "__main__":
         global auth
         auth = file.read()
         if not auth.startswith(ROBLOSECURITY_PREFIX):
+            if not auth.startswith(ROBLOSECURITY_VALID_PREFIX):
+                print("!! Auth format may be invalid !!")
             auth = ROBLOSECURITY_PREFIX+auth
 
     if args.path:
