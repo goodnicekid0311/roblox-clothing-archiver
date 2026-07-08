@@ -52,3 +52,7 @@ options:
   -d, --delay DELAY     delay in seconds between clothing texture downloads
   --norun               (debug) dont make any network requests
 ```
+# Why
+Made in response to several decisions by roblox to try to phase out 2D clothing, #SaveRoblox
+
+![](https://files.catbox.moe/i9qolv.png)
