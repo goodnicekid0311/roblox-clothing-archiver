@@ -16,7 +16,8 @@ Tested on Python 3.14, on Ubuntu 26.04
 Report bugs/issues if you can please!  
 Contact @gvrlslvt on Discord for any help
 
-## Example Use
+## How to Use
+On Windows, you can click the "run.bat" if you dont know how to use a command line. Otherwise,
 ```
 $ python3 roarchive.py 6139847 --auth ../auth.txt
 getting group info for 6139847
