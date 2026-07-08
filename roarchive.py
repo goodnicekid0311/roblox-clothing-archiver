@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
                 filepath = os.path.join(output_folder, filename)
 
-                success = save_shirt(item_id, filepath, item if args.metadata == 1 else None)
+                success = save_shirt(item_id, filepath)
                 if not success:
                     print("error archiving "+str(item_id))
                     errors.append(item_id)
