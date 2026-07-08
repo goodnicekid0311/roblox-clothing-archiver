@@ -1,6 +1,8 @@
 ![](https://files.catbox.moe/jzpr11.jpg)
 # Important!!!
 ### You must create a file named 'auth.txt' in the python directory, and put your .ROBLOSECURITY cookie in it!!! (Or specify the location of your cookie file with --auth FILE !!)
+**This is because roblox requires you to have an account in order to use some of their APIs**
+
 Tutorial here >>> https://www.youtube.com/watch?v=S3y1GTPMNBE
 
 # Roblox Clothing Archiver
