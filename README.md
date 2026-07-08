@@ -13,6 +13,8 @@ pip install requests
 
 Tested on Python 3.14, on Ubuntu 26.04
 
+Works reliably with default settings, I've downloaded >5000 clothes without getting rate limited
+
 Report bugs/issues if you can please!  
 Contact @gvrlslvt on Discord for any help
 
