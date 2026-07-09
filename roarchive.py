@@ -78,7 +78,7 @@ def get_shirt_xml(shirt_id):
         callback,
         "error getting xml for "+str(shirt_id))
     
-    if valid:
+    if xml_get:
         return ET.fromstring(xml_get.text)
 
 def save_shirt(shirt_id, filepath):
