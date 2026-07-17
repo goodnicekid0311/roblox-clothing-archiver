@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
     with open(args.auth, "r") as file:
         global auth
-        auth = file.read()
+        auth = file.read().strip()
 
         if not ROBLOSECURITY_VALID_PREFIX in auth:
             print("!! Auth format may be invalid !!")
